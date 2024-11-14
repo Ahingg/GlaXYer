@@ -168,10 +168,14 @@ void printMapBox(int ySize, int xSize){
 
 }
 
+void printUserPosition(User *user){
+	setCursorPosition(user->p.y + 2, user->p.x + 2);
+    printf("P");
+}
 
 void printField(User *user) {
 	
-	// disini gua bakal  hilangin printmapbox nya sehingga  bakal di print kalau perlu doang,
+	// nvm
 	printMapBox(MAX_HEIGHT, MAX_WIDTH);
 	setCursorPosition(2 + (user->p.y), 2 + (user->p.x));
 	printf("P");
@@ -179,7 +183,7 @@ void printField(User *user) {
 		Position dungeonPosition = user->currentField->dungeon.p;
 		setCursorPosition(1 + dungeonPosition.y, 1 + dungeonPosition.x);
 		// 220 atas, 221 kiri, 222 kanan, 207 pintu
-		printf(user->currentField->dungeon.baseLevel < 2 ? GREEN :
+		printf(user->currentField->dungeon.baseLevel < 2 ? GREEN :	
 		(user->currentField->dungeon.baseLevel < 3) ?
 		YELLOW : RED);
 		printf("%c%c%c" RESET, 220, 220, 220);
@@ -246,6 +250,10 @@ void printFieldSummary(User *user){
 		current = current->next;
 	}
 	getch();
+	
+	// Balik ke map jalan jalan
+	printMapBox(MAX_HEIGHT, MAX_WIDTH);
+	printField(user);
 }
 
 Field *findField(Position p) {
@@ -313,6 +321,7 @@ void handleFieldTransition(User *user, char direction) {
     Position newFieldPos = user->currentField->p;
     Position newUserPos = user->p;
 
+	resetScreen();
     switch(direction) {
         case 'L':
             newFieldPos.x--;
@@ -320,6 +329,7 @@ void handleFieldTransition(User *user, char direction) {
             if(user->currentField->left != NULL){
             	user->currentField = user->currentField->left;
             	user->p = newUserPos;
+            	printField(user);
             	return;
 			}
             break;
@@ -329,6 +339,7 @@ void handleFieldTransition(User *user, char direction) {
             if(user->currentField->right != NULL){
             	user->currentField = user->currentField->right;
             	user->p = newUserPos;
+            	printField(user);
             	return;
 			}
             break;
@@ -338,6 +349,7 @@ void handleFieldTransition(User *user, char direction) {
             if(user->currentField->bottom != NULL){
             	user->currentField = user->currentField->bottom;
             	user->p = newUserPos;
+            	printField(user);
             	return;
 			}
             break;
@@ -347,6 +359,7 @@ void handleFieldTransition(User *user, char direction) {
             if(user->currentField->top != NULL){
             	user->currentField = user->currentField->top;
             	user->p = newUserPos;
+            	printField(user);
             	return;
 			}
             break;
@@ -390,6 +403,8 @@ void handleFieldTransition(User *user, char direction) {
     adjacentPos.y--;
     adjacentField = findField(adjacentPos);
     if (adjacentField) connectField('T', newField, adjacentField);
+    
+    printField(user);
 }
 
 
@@ -406,16 +421,16 @@ void displayButtons(int selected) {
 void printCardType(int type){
 	switch(type){
 		case 1:
-			printf("Attack Card");
+			printf("Attack Card      ");
 			break;
 		case 2:
-			printf("Defense Card");
+			printf("Defense Card     ");
 			break;
 		case 3:
-			printf("Enhance Card");
+			printf("Enhance Card     ");
 			break;
 		case 4:
-			printf("Heal Card");
+			printf("Heal Card         ");
 			break;
 	}
 }
@@ -469,7 +484,7 @@ void teleportUserToBase(User *user){
 
 void winScene(User *user){
 	Dungeon currentDungeon = user->currentField->dungeon;
-	printMapBox(5, 50);
+	printMapBox(6, 50);
 	setCursorPosition(3, 4);
 	printf("YOU have Conquered This Dungeon On Level %d", currentDungeon.baseLevel);
 	// cara hitung ice Heart yang didapetin:
@@ -491,10 +506,15 @@ void winScene(User *user){
 	}
 	else{
 		printf("You have fully Conquered This Dungeon Now");
-	}	
+	}
+	setCursorPosition(6,4);
+	printf("Press Any Key To Continue");
+	
+
 }
 
 void gamePlay(User *user, Card *cards){
+	resetScreen();
 	Dungeon currentDungeon = user->currentField->dungeon;
 	// untuk dapetin total turn yang akan ada berdasarkan jumlah kartu terbanyak.
 	int userCardCount = user->cardCount;
@@ -509,8 +529,9 @@ void gamePlay(User *user, Card *cards){
 	int userCurrentHp = user->baseHp;
 	int enemyCurrentHp = currentDungeon.enemyHP;
 	int winner = 0; // 0 untuk player win, 1 untuk enemy win
+	printMapBox(8, 60);
 	for(int i = 0; i < totalTurn; i++){
-		printMapBox(8, 60);
+		
 		setCursorPosition(3, 4);
 		if(i >= userCardCount){
 			printf("%s did nothing", user->name);
@@ -619,38 +640,41 @@ void gamePlay(User *user, Card *cards){
 			resetScreen();
 			setCursorPosition(3, 10);
 			printf("\033[1;31mYOU LOST\033[0m");
+			setCursorPosition(4,10);
+			printf("Press Any Key to Continue");
 			teleportUserToBase(user);
 			winner = 1;
 			break;
 		}
 	}
-	Sleep(2000);
 	// kalau turnnya habis dan enemy belum mati, user otomatis kalah
 	
-	
+	getch();
 }
 
 void dungeonScene(User *user){
 	// sebelum game dimulai, user akan pilih kartu sebanyak max slot kartunya
 	// Kartu bakal di random 2 diantara 4 kartu yang tersedia
+	resetScreen();
 	int userCardCount = user->cardCount;
 	Card userCard[userCardCount];
+	printMapBox(7, 70);
 	for(int i = 0; i < userCardCount; i++){
 		
 		int selected = 0;
 		int random1 = (rand() % 100) < 50 ? 1 : (rand() % 100) < 33 ? 2 : (rand() % 100 < 50 ? 3 : 4) ;
 		int random2 = (rand() % 100) < 50 ? 1 : (rand() % 100) < 33 ? 2 : (rand() % 100 < 50 ? 3 : 4) ;
 		while(1){
-			resetScreen();
-			printMapBox(7, 70);
+			
+			
 			printCardList(userCard, i);
 			
 			setCursorPosition(5,2);
 			printf("Select one of this card:");
 			setCursorPosition(6,2);
-			printf("1. "); printCardType(random1); printf("%s", !selected ? " <<< " : ""); // kalau selected == 0
+			printf("1. "); printCardType(random1); printf("%s", !selected ? " <<< " : "    "); // kalau selected == 0
 			setCursorPosition(7,2);
-			printf("2. "); printCardType(random2); printf("%s", selected ? " <<< " : ""); // kalau selected == 1
+			printf("2. "); printCardType(random2); printf("%s", selected ? " <<< " : "     "); // kalau selected == 1
 			char c = getch();
 			if(c == 'W' || c == 'w'){
 				selected = 0;
@@ -671,6 +695,7 @@ void dungeonScene(User *user){
 	}
 	// kelar pemilihan card, masuk ke gameplay
 	gamePlay(user, userCard);
+	resetScreen();
 }
 
 void dungeonEntrance(User *user) {
@@ -696,12 +721,15 @@ void dungeonEntrance(User *user) {
     }
 
     if (selected != 0) {
-    	resetScreen();
+    	printField(user);
+    	printUserPosition(user);
     	return;
 	}
     // kalau yang diselect itu yes, berarti masuk ke dungeonnya
     dungeonScene(user);
     
+    printField(user);
+	printUserPosition(user);
 }
 
 void levelUp(User *user, int cost){
@@ -713,6 +741,7 @@ void levelUp(User *user, int cost){
 }
 
 void baseMenu(User *user){
+	resetScreen();
 	int selected = 0;
 	int levelUpReq = 10 * pow(5,user->baseLevel-1);
 	while(1){
@@ -726,7 +755,7 @@ void baseMenu(User *user){
 		setCursorPosition(5,2);
 		printf("User Card Slot : %d", user->cardCount);
 		setCursorPosition(7,2);
-		printf("%s1. Level Up Base \033[0m", user->iceHeartCount < levelUpReq ? "\033[1;31m" : ""); 
+		printf("%s1. Level Up Base (%d)\033[0m", user->iceHeartCount < levelUpReq ? "\033[1;31m" : "", levelUpReq); 
 			printf("%s", !selected ? " <<< " : ""); // kalau selected == 0
 		setCursorPosition(8,2);
 		printf("2. Return"); printf("%s", selected ? " <<< " : ""); 
@@ -749,7 +778,84 @@ void baseMenu(User *user){
 			if(selected == 1) break;
 		}
 	}
+	resetScreen();
+	printField(user);
+	printUserPosition(user);
+}
 
+void mainMenu(User *user){
+    // buat sejenis menu normal aja
+	// 1. Teleport To Base
+	// 2. Mark As BookMark
+	// 3. View Bookmarks
+	// 4. Tutorial
+	// 5. Return
+	// 6. Exit Game
+	resetScreen();
+	setCursorPosition(2,1);
+	puts("\033[1;36m1. Teleport to Base <<<\033[0m");
+	puts("2. Mark Location");
+	puts("3. View Marked Locations");
+	puts("4. How To Play");
+	puts("5. Return");
+	puts("6. Exit Game");
+	
+	const char *menuItems[6] = {
+        "1. Teleport to Base",
+        "2. Mark Location",
+        "3. View Marked Locations",
+        "4. How To Play",
+        "5. Return",
+        "6. Exit Game"
+    };
+	
+	
+	int selected = 0;
+    int ch;
+
+    while (1) {
+        ch = _getch(); // Get key press without waiting for Enter key
+
+		setCursorPosition(selected+2, 1);
+		printBlankLine();
+		setCursorPosition(selected+2, 1);
+		printf("%s", menuItems[selected]);
+        if (ch == 'w' || ch == 'W') {
+        	
+            selected = (selected - 1 + 6) % 6;
+
+        } else if (ch == 's' || ch == 'S') {
+            selected = (selected + 1) % 6;
+            
+        } else if (ch == '\r') { // Enter key
+//            switch (selected) {
+//                case 0:
+//                    printf("\nTeleporting to Base...\n");
+//                    break;
+//                case 1:
+//                    printf("\nMarking Location...\n");
+//                    break;
+//                case 2:
+//                    printf("\nViewing Marked Locations...\n");
+//                    break;
+//                case 3:
+//                    printf("\nShowing How To Play...\n");
+//                    break;
+//                case 4:
+//                    printf("\nReturning to Previous Menu...\n");
+//                    break;
+//                case 5:
+//                    printf("\nExiting Game...\n");
+//                    exit(0);
+//                    break;
+//            }
+//            Sleep(1000);
+			break;
+        }
+        setCursorPosition(selected+2, 1);
+        printf("\033[1;36m%s <<<\033[0m", menuItems[selected]);
+    }
+	
 }
 
 void moveUser(User *user, char input) {
@@ -851,6 +957,16 @@ void moveUser(User *user, char input) {
         case 'm': case 'M':
         	printFieldSummary(user);
         	break;
+        	
+        case 'q': case 'Q':
+        	// buat sejenis menu normal aja
+        	// 1. Teleport To Base
+        	// 2. Mark As BookMark
+        	// 3. View Bookmarks
+        	// 4. Tutorial
+        	// 5. Return
+        	// 6. Exit Game
+        	mainMenu(user);
     }
 }
 
@@ -873,8 +989,11 @@ void moveO(User *user){
         setCursorPosition(user->p.y + 2, user->p.x + 2);
         printf(" ");
         moveUser(user, input);  // Update the player's position based on input
-        setCursorPosition(user->p.y + 2, user->p.x + 2);
-        printf("P");
+		printUserPosition(user);
+        
+        // waktu handle transition, berarti kita perlu re print mapny 
+        // yang perlu di print map box ulang adalah setiap kalikit amasuk scene seperti print field summary, printFrame untuk choose card,
+        // print frame untuk gameplay, print frame untuk lost, print frame untuk win, print frame untuk upgrade base
 //        if (input == 'q' || input == 'Q') break; // Quit if 'q' is pressed
     }
 }
