@@ -11,6 +11,7 @@
 #define YELLOW "\x1b[33m"
 #define GREEN "\x1b[32m"
 #define RESET "\x1b[0m"
+#define HIGHLIGHT_COLOR "\033[30;47m" 
 #define ABSOLUTE_VALUE(x) ((x) < 0 ? -(x) : (x))
 
 #define CORNER_BL 200
@@ -19,6 +20,11 @@
 #define LINE_V    186
 #define CORNER_TR 187
 #define CORNER_BR 188
+#define T_SPLIT   203
+#define B_SPLIT   202
+#define L_SPLIT   204
+#define R_SPLIT   185
+#define CROSS     206
 #define MAX_HEIGHT 20
 #define MAX_WIDTH 40
 
@@ -51,6 +57,8 @@ struct Dungeon {
 	Card enemyCard[8];
 };
 
+
+
 struct Field{
 	Position p; // field position from root(0,0), can be negative
 	Field *left;
@@ -76,6 +84,88 @@ struct FieldVault{
 	FieldVault *next;
 } *vHead;
 
+struct Bookmark {
+	char notes[1000];
+	Field *field;
+} *hashTable[1000] = {NULL};
+
+
+unsigned int hashFunction(const char *str) {
+    unsigned int hash = 0;
+    unsigned int prime = 31;
+    while (*str) {
+        hash = (hash * prime) + (*str++); // Calculate hash value
+    }
+    return hash % 1000; 
+}
+
+Bookmark *createBookmark(const char *notes, Field *field){
+	Bookmark *newBookmark = (Bookmark *)malloc(sizeof(Bookmark));
+    strcpy(newBookmark->notes, notes);
+    newBookmark->field = field;
+    return newBookmark;
+}
+
+void insertBookmark(const char *notes, Field *field) {
+    // Create a new bookmark
+    Bookmark *newBookmark = createBookmark(notes, field);
+
+    // Generate hash key
+    unsigned int hashIndex = hashFunction(notes);
+
+    // Handle collision using linear probing
+    unsigned int originalIndex = hashIndex;
+    while (hashTable[hashIndex] != NULL) {
+        if (strcmp(hashTable[hashIndex]->notes, notes) == 0) {
+            free(hashTable[hashIndex]);
+            hashTable[hashIndex] = newBookmark;
+            return;
+        }
+        hashIndex = (hashIndex + 1) % 1000;
+        if (hashIndex == originalIndex) {
+            free(newBookmark);
+            return;
+        }
+    }
+
+    hashTable[hashIndex] = newBookmark;
+}
+
+int deleteBookmark(const char *notes) {
+    int hashKey = hashFunction(notes);
+    int originalHashKey = hashKey;
+
+    while (hashTable[hashKey] != NULL) {
+        if (strcmp(hashTable[hashKey]->notes, notes) == 0) {
+            free(hashTable[hashKey]);
+            hashTable[hashKey] = NULL;
+
+            int nextKey = (hashKey + 1) % 1000;
+            while (hashTable[nextKey] != NULL) {
+                Bookmark *temp = hashTable[nextKey];
+                hashTable[nextKey] = NULL;
+
+                int newHashKey = hashFunction(temp->notes);
+                while (hashTable[newHashKey] != NULL) {
+                    newHashKey = (newHashKey + 1) % 1000;
+                }
+                hashTable[newHashKey] = temp;
+
+                nextKey = (nextKey + 1) % 1000;
+            }
+
+            return 1;
+        }
+
+        hashKey = (hashKey + 1) % 1000;
+
+        if (hashKey == originalHashKey) break;
+    }
+
+    return 0; 
+}
+
+
 
 int getDiff(int pos1, int pos2){
 	// usahain pos1 untuk playerPos, pos2 untuk currPointerPos
@@ -98,8 +188,8 @@ Field *createField(Position p){
 	newField->p = p;
 	// di base map gaada dungeon
 	if(p.x != 0 || p.y != 0){
-		newField->dungeon.p.x = (rand() % 37) + 2;
-		newField->dungeon.p.y = (rand() % 17) + 2;
+		newField->dungeon.p.x = (rand() % 36) + 2;
+		newField->dungeon.p.y = (rand() % 16) + 2;
 //		int randNum = (rand() % 100) < 33 ? 1 : (rand() % 100) < 75 ? 2 : 3;
 		newField->dungeon.baseLevel = 1;
 		newField->dungeon.enemyBaseAttack = 100;
@@ -133,6 +223,7 @@ void resetScreen(){
 	for(int i = 1; i <= 45; i++){
 		setCursorPosition(i, 1);
 		printBlankLine();
+		printf("                            ");
 	}
 } 
 
@@ -221,6 +312,10 @@ void printField(User *user) {
     printf("User Attack     : %d",  user->baseAttack);
     setCursorPosition(8, 44);
     printf("Ice Heart Owned : %d\n", user->iceHeartCount);
+    setCursorPosition(9, 44);
+    printf("Card Slot       : %d\n", user->cardCount);
+    setCursorPosition(10, 44);
+    printf("Username        : %s\n", user->name);
 }
 
 void printFieldSummary(User *user){
@@ -531,7 +626,8 @@ void gamePlay(User *user, Card *cards){
 	int winner = 0; // 0 untuk player win, 1 untuk enemy win
 	printMapBox(8, 60);
 	for(int i = 0; i < totalTurn; i++){
-		
+		setCursorPosition(3, 4);
+		for(int m = 0; m < 56; m++) printf(" ");
 		setCursorPosition(3, 4);
 		if(i >= userCardCount){
 			printf("%s did nothing", user->name);
@@ -555,11 +651,15 @@ void gamePlay(User *user, Card *cards){
 				// masukin logic kalah
 				userMultiplier = 1;
 				setCursorPosition(4,4);
+				for(int m = 0; m < 56; m++) printf(" ");
+				setCursorPosition(4,4);
 				printf("Dealt \033[1;31m%d\033[0m damage to the Enemy", totalDamage);
 				
 			}
 			else if(cards[i].type == 2){
 				printf("%s applied Defense Card", user->name);
+				setCursorPosition(4,4);
+				for(int m = 0; m < 56; m++) printf(" ");
 				setCursorPosition(4,4);
 				userBlockTurn++;
 				printf("User can block for the next \033[1;34m%d\033[0m turn(s)", userBlockTurn);
@@ -567,18 +667,24 @@ void gamePlay(User *user, Card *cards){
 			else if(cards[i].type == 3){
 				printf("%s applied Enhance Card", user->name);
 				setCursorPosition(4,4);
+				for(int m = 0; m < 56; m++) printf(" ");
+				setCursorPosition(4,4);
 				userMultiplier *= 2;
 				printf("User next attack will be \033[1;33m%dx\033[0m times stronger", userMultiplier);
 			}
 			else if(cards[i].type == 4){
 				printf("%s applied Heal Card", user->name);
 				setCursorPosition(4,4);
+				for(int m = 0; m < 56; m++) printf(" ");
+				setCursorPosition(4,4);
 				userCurrentHp += (user->baseHp)/2;
 				if(userCurrentHp > user->baseHp) userCurrentHp = user->baseHp;
 				printf("Healed user 50%% of max HP");
 			}
 		}
-		setCursorPosition(6, 4);
+		setCursorPosition(6,4);
+		for(int m = 0; m < 56; m++) printf(" ");
+		setCursorPosition(6,4);
 		if(i >= enemyCardCount){
 			printf("Enemy did nothing");
 		}
@@ -598,11 +704,15 @@ void gamePlay(User *user, Card *cards){
 				// masukin logic user kalah 
 				enemyMulitplier = 1;
 				setCursorPosition(7,4);
+				for(int m = 0; m < 56; m++) printf(" ");
+				setCursorPosition(7,4);
 				printf("Dealt \033[1;31m%d\033[0m damage to user", totalDamage);
 				
 			}
 			else if(enemyCard.type == 2){
 				printf("Enemy applied Defense Card");
+				setCursorPosition(7,4);
+				for(int m = 0; m < 56; m++) printf(" ");
 				setCursorPosition(7,4);
 				enemyBlockTurn++;
 				printf("Enemy can block for the next \033[1;34m%d\033[0m turn(s)", enemyBlockTurn);
@@ -610,8 +720,10 @@ void gamePlay(User *user, Card *cards){
 			else if(enemyCard.type == 3){
 				printf("Enemy applied Enhance Card");
 				setCursorPosition(7,4);
+				for(int m = 0; m < 56; m++) printf(" ");
+				setCursorPosition(7,4);
 				enemyMulitplier *= 2;
-				printf("Enemy next attack will be \033[1;33m%dx\033[0m times stronge ", enemyMulitplier);
+				printf("Enemy next attack will be \033[1;33m%dx\033[0m times stronger", enemyMulitplier);
 			}
 			else if(enemyCard.type == 4){
 				printf("Enemy applied Heal Card");
@@ -783,6 +895,194 @@ void baseMenu(User *user){
 	printUserPosition(user);
 }
 
+void drawTable(int currentPage, int totalPages, int start, int end, int selected, Bookmark **bookmarks) {
+	
+    // Top border
+//    printf("%c", CORNER_TL);
+//    for (int i = 0; i < 50; i++) printf("%c", LINE_H);
+//    printf("%c\n", CORNER_TR);
+
+    // Header
+    setCursorPosition(2,3);
+    printf("%-48s", "Bookmarks");
+//    printf("%c %-48s %c\n", LINE_V, "", LINE_V);
+
+    // Rows
+    for (int i = start; i < end; i++) {
+    	setCursorPosition(i-start + 3, 3);
+        if (i == start + selected) {
+            printf("%s%-48s%s", HIGHLIGHT_COLOR, bookmarks[i]->notes, "\033[0m");
+        } else {
+            printf("%-48s", bookmarks[i]->notes);
+        }
+    }
+
+    // Fill empty rows for remaining space
+    for (int i = end; i < start + 10; i++) {
+    	setCursorPosition(i + 3, 3);
+        printf("%-48s", "");
+    }
+
+    // Bottom border
+//    printf("%c", CORNER_BL);
+//    for (int i = 0; i < 50; i++) printf("%c", LINE_H);
+//    printf("%c\n", CORNER_BR);
+
+    // Footer
+    setCursorPosition(15,1);
+    printf("Page %d of %d | Use W/S to navigate, A/D to switch pages, Enter to select, Esc to exit.\n",
+           currentPage + 1, totalPages);
+}
+
+int viewBookmarks(User *user) {
+	int PAGE_SIZE = 10;
+    int totalBookmarks = 0;
+    Bookmark *bookmarks[1000];
+    
+    // Collect all bookmarks from the hash table
+    for (int i = 0; i < 1000; i++) {
+        if (hashTable[i] != NULL) {
+            bookmarks[totalBookmarks++] = hashTable[i];
+        }
+    }
+    
+
+
+    int currentPage = 0;
+    int selected = 0;
+    int totalPages = (totalBookmarks + PAGE_SIZE - 1) / PAGE_SIZE;
+    resetScreen();
+	printMapBox(12, 50);
+    while (1) {
+	    if (totalBookmarks == 0) {
+	    	// rapiin lagi
+	    	printMapBox(2, 50);
+	    	setCursorPosition(2,3);
+	        printf("No bookmarks available to display.");
+	        setCursorPosition(3,3);
+	        printf("Press any key to continue.");
+	        getch();
+	        return 0;
+	    }
+//        system("cls"); // Clear the screen (Windows)
+        
+//        setCursorPosition(1, 1);
+
+        int start = currentPage * PAGE_SIZE;
+        int end = (start + PAGE_SIZE < totalBookmarks) ? start + PAGE_SIZE : totalBookmarks;
+
+        drawTable(currentPage, totalPages, start, end, selected, bookmarks);
+
+        // Navigation
+        char ch = _getch();
+        if (ch == 'w' || ch == 'W') {
+            selected = (selected - 1 + (end - start)) % (end - start);
+        } else if (ch == 's' || ch == 'S') {
+            selected = (selected + 1) % (end - start);
+        } else if (ch == 'a' || ch == 'A') {
+            if (currentPage > 0) {
+                currentPage--;
+                selected = 0;
+            }
+        } else if (ch == 'd' || ch == 'D') {
+            if (currentPage < (totalBookmarks + PAGE_SIZE - 1) / PAGE_SIZE - 1) {
+                currentPage++;
+                selected = 0;
+            }
+        } else if (ch == '\r') { // Enter key
+//          printf("Selected Bookmark: (%d) %s\n", start + selected + 1, bookmarks[start + selected]->notes);
+//          system("pause");
+			Bookmark *selectedBookmark = bookmarks[start + selected];
+			user->currentField = selectedBookmark->field;
+
+			
+			
+			// masukin sub menu dulu, bisa teleport, bisa delete, bisa cancel
+			// untuk Select sub menunya
+			const char *actions[3] = {
+				"1. Teleport       ",
+				"2. Delete Bookmark",
+				"3. Cancel         "
+			};
+			int subMenuSelect = 1;
+			setCursorPosition(3, 54);
+			printf("Select Action: ");
+			setCursorPosition(4, 54);
+			printf(HIGHLIGHT_COLOR "%s" RESET, actions[0]);
+			setCursorPosition(5, 54);
+			printf("%s",actions[1]);
+			setCursorPosition(6, 54);
+			printf("%s",actions[2]);
+			
+			// looping sub menunya
+			while(1){
+				char c = getch();
+				setCursorPosition(3+subMenuSelect, 54);
+				printf("%s", actions[subMenuSelect-1]);
+				// untuk validasi dan ngeprint yang bakal di ilangin highlightnya
+				if (c == 's' || c == 'S'){
+					if(subMenuSelect == 3) subMenuSelect = 1;
+					else subMenuSelect++; 
+				}
+				else if (c == 'w' || c == 'W'){
+					if(subMenuSelect == 1) subMenuSelect = 3;
+					else subMenuSelect--;
+				}
+				else if (c == '\r' && subMenuSelect == 1) {
+					// Teleport user
+					// disini biar bagus, validasi lagi kalau waktu pindah itu gabakal kena dungeonnya
+					// logikanya gampang aja, cek kalau dungeonnya lebih dominan di kanan, kita spawn di kolom pertama
+					// kalau dungeonnya dominan di kiri, spawn di kolom terakhir
+					// karena settingan awalnya kubuat x nya itu diantara 2 sampai 38 jadinya tengahjnya kubuat jadi 20 aja
+					if(selectedBookmark->field->dungeon.p.x >= 20){
+					// kalau misalnya dominan kanan
+						user->p.x = 1;
+					}
+					else{
+						// sisanya berarti kalau dia dominan kiri
+						user->p.x = 39;
+					}
+					return 0;
+				}
+				else if (c == '\r' && subMenuSelect == 2){
+					// delete bookmark
+					int result = deleteBookmark(selectedBookmark->notes);
+					if(result){
+						// dikurangin total bookmarknya, kalau totalnya masih besar 0, print mapboxnya
+						totalBookmarks--;
+						if(totalBookmarks > 0) printMapBox(12,50);
+						else break;
+					}
+				}
+				else if (c == '\r' && subMenuSelect == 3){
+					resetScreen();
+					printMapBox(12,50);
+					break;
+				}
+				
+				
+				// untuk override line yang akan di highlighjt
+				if (subMenuSelect == 1){
+					setCursorPosition(4, 54);
+					printf(HIGHLIGHT_COLOR "%s" RESET, actions[subMenuSelect-1]);
+				}
+				else if(subMenuSelect == 2){
+					setCursorPosition(5, 54);
+					printf(HIGHLIGHT_COLOR "%s" RESET, actions[subMenuSelect-1]);					
+				}
+				else if(subMenuSelect == 3){
+					setCursorPosition(6, 54);
+					printf(HIGHLIGHT_COLOR "%s" RESET, actions[subMenuSelect-1]);
+				}
+				
+			}
+        } else if (ch == 27){
+        	return 1; // 1 untuk stay in loop menu main
+		}
+		
+	}       
+}
+
 void mainMenu(User *user){
     // buat sejenis menu normal aja
 	// 1. Teleport To Base
@@ -828,28 +1128,91 @@ void mainMenu(User *user){
             selected = (selected + 1) % 6;
             
         } else if (ch == '\r') { // Enter key
-//            switch (selected) {
-//                case 0:
-//                    printf("\nTeleporting to Base...\n");
-//                    break;
-//                case 1:
-//                    printf("\nMarking Location...\n");
-//                    break;
-//                case 2:
-//                    printf("\nViewing Marked Locations...\n");
-//                    break;
-//                case 3:
-//                    printf("\nShowing How To Play...\n");
-//                    break;
-//                case 4:
-//                    printf("\nReturning to Previous Menu...\n");
-//                    break;
-//                case 5:
-//                    printf("\nExiting Game...\n");
-//                    exit(0);
-//                    break;
-//            }
-//            Sleep(1000);
+			if (selected == 0){
+				// Teleport to base
+				teleportUserToBase(user);
+				printMapBox(MAX_HEIGHT, MAX_WIDTH);
+				printField(user);
+				return;	
+			}
+			if (selected == 1){
+				char note[1000];
+				resetScreen();
+				
+				setCursorPosition(2,1);
+				
+				printf("Type \'esc\' to return.");
+				setCursorPosition(1,1);
+				printf("Enter Code/Notes(max 20 Char) : ");
+				
+
+				scanf("%[^\n]", note);getchar();
+				while(strcmp(note, "esc") != 0 && strlen(note) > 20){
+					setCursorPosition(3,1);
+					printf(RED "At Most 20 Character" RESET);
+					setCursorPosition(2,1);
+					printf("Type \'esc\' to return.");
+					setCursorPosition(1,1);
+					printf("Enter Code/Notes(max 20 Char) : "); printBlankLine();
+					setCursorPosition(1,33);
+					scanf("%[^\n]", note);getchar();
+					if (strcmp(note, "esc") != 0 && strlen(note) <= 20){
+						insertBookmark(note, user->currentField);
+						break;
+					}
+				}
+				return;
+			}
+			
+			if (selected == 2){
+				int result = viewBookmarks(user);
+				if(result == 1) {
+					resetScreen();
+					setCursorPosition(2,1);
+					selected = 0;
+					puts("\033[1;36m1. Teleport to Base <<<\033[0m");
+					puts("2. Mark Location");
+					puts("3. View Marked Locations");
+					puts("4. How To Play");
+					puts("5. Return");
+					puts("6. Exit Game");
+					continue;
+				}
+				return;
+			}
+			
+			if (selected == 3){
+				
+				// how to play
+				// In this game you will be spawned on a base field, you can upgrade the base level
+				// Eventually you will also get stronger by leveling up base
+				// You can use the reward recieved from fighting in dungeon to level up base
+				// In the game, you can choose up to certain number of card.
+				// Attack card is to attack the enemy with 100% attack power
+				// Defense card is to block incoming attacks
+				// Enhance card is to strengthen incoming attack, which can be stacked
+				// Heal Card is to heal ourself by 50% of hp
+				
+				// After choosing your cards, you will be facing the enemy and play the card turn by turn
+				// You will always play first. Enemy also have certain number of Card
+				// Dungeon will have 3 level from 1-3. You need to beat level 1 dungeon to make it into level 2
+				// After level 3, the dungeon is considered conquered and you can't enter that dungeon anymore
+				
+				// You can also mark a field with a code or note to make it recognizeable
+				// You can teleport to the marked field by using menu 'q'
+				// You can also remove the mark after you dont need it anymore
+				
+				return;
+			}
+			
+			if (selected == 4){
+				// return ke game
+				return;
+			}
+			
+			if (selected == 5){
+				exit(0);
+			}
 			break;
         }
         setCursorPosition(selected+2, 1);
@@ -967,6 +1330,12 @@ void moveUser(User *user, char input) {
         	// 5. Return
         	// 6. Exit Game
         	mainMenu(user);
+        	// setiap kelar main menu pasti cm bisa balik ke main menu ataupun selesai game
+        	// 
+        	resetScreen();
+        	printMapBox(MAX_HEIGHT, MAX_WIDTH);
+        	printField(user);
+        	//
     }
 }
 
@@ -1011,9 +1380,11 @@ int main() {
     user->baseHp = 500;
     user->baseAttack = 100;
     user->cardCount = 8;
+//    printf("Insert Name : ");
+//    scanf("%s", user->name); getchar();
     strcpy(user->name, "XY");
     teleportUserToBase(user);
-    
+    // moveO itu main loop nya
     moveO(user);
     
     return 0;
