@@ -29,6 +29,12 @@
 #define MAX_WIDTH 40
 
 
+void flushBuffer(){
+	while(kbhit()){
+		getch();
+	}
+}
+
 void setCursorPosition(int y, int x){
 	printf("\033[%d;%dH", y, x);
 }
@@ -276,13 +282,13 @@ void printField(User *user) {
 		// 220 atas, 221 kiri, 222 kanan, 207 pintu
 		printf(user->currentField->dungeon.baseLevel < 2 ? GREEN :	
 		(user->currentField->dungeon.baseLevel < 3) ?
-		YELLOW : RED);
+		YELLOW : (user->currentField->dungeon.baseLevel < 4) ? RED : CYAN);
 		printf("%c%c%c" RESET, 220, 220, 220);
 		
 		setCursorPosition(2 + dungeonPosition.y, 1 + dungeonPosition.x);
 		printf(user->currentField->dungeon.baseLevel < 2 ? GREEN :
 		(user->currentField->dungeon.baseLevel < 3) ?
-		YELLOW : RED);
+		YELLOW : (user->currentField->dungeon.baseLevel < 4) ? RED : CYAN);
 		printf("%c%c%c" RESET, 221, 207, 222);
 	}
 	else {
@@ -534,35 +540,35 @@ void printCardList(Card *card, int cardCount){
 
 	for(int i = 0; i < cardCount; i++){
 		if (card[i].type == 1){
-			setCursorPosition(2,i*4 + 3);
-			printf("\033[1;41m    \033[0m");
 			setCursorPosition(3,i*4 + 3);
-			printf("\033[1;41m AT \033[0m");
+			printf("\033[1;41m    \033[0m");
 			setCursorPosition(4,i*4 + 3);
+			printf("\033[1;41m AT \033[0m");
+			setCursorPosition(5,i*4 + 3);
 			printf("\033[1;41m    \033[0m");
 		}
 		else if (card[i].type == 2){
-			setCursorPosition(2,i*4 + 3);
-			printf("\033[1;44m    \033[0m");
 			setCursorPosition(3,i*4 + 3);
-			printf("\033[1;44m DF \033[0m");
+			printf("\033[1;44m    \033[0m");
 			setCursorPosition(4,i*4 + 3);
+			printf("\033[1;44m DF \033[0m");
+			setCursorPosition(5,i*4 + 3);
 			printf("\033[1;44m    \033[0m");
 		}
 		else if (card[i].type == 3){
-			setCursorPosition(2,i*4 + 3);
-			printf("\033[1;43m    \033[0m");
 			setCursorPosition(3,i*4 + 3);
-			printf("\033[1;43m EN \033[0m");
+			printf("\033[1;43m    \033[0m");
 			setCursorPosition(4,i*4 + 3);
+			printf("\033[1;43m EN \033[0m");
+			setCursorPosition(5,i*4 + 3);
 			printf("\033[1;43m    \033[0m");
 		}
 		else if (card[i].type == 4){
-			setCursorPosition(2,i*4 + 3);
-			printf("\033[1;42m    \033[0m");
 			setCursorPosition(3,i*4 + 3);
-			printf("\033[1;42m HL \033[0m");
+			printf("\033[1;42m    \033[0m");
 			setCursorPosition(4,i*4 + 3);
+			printf("\033[1;42m HL \033[0m");
+			setCursorPosition(5,i*4 + 3);
 			printf("\033[1;42m    \033[0m");
 		}
 		
@@ -584,7 +590,7 @@ void winScene(User *user){
 	printf("YOU have Conquered This Dungeon On Level %d", currentDungeon.baseLevel);
 	// cara hitung ice Heart yang didapetin:
 	// faktornya cuma user base level sama current Dungeon base level
-	int iceHeartAcquired = (rand() % (user->baseLevel + currentDungeon.baseLevel))*3;
+	int iceHeartAcquired = ((rand() % (user->baseLevel + currentDungeon.baseLevel)) + user->baseLevel)*3;
 	user->iceHeartCount += iceHeartAcquired;
 	setCursorPosition(4,4);
 	printf("You recieved %d Heart Of Ice as the Reward", iceHeartAcquired);
@@ -600,12 +606,12 @@ void winScene(User *user){
 		printf("Dungeon Level Has Ben Increased....");
 	}
 	else{
+		user->currentField->dungeon.baseLevel++;
 		printf("You have fully Conquered This Dungeon Now");
 	}
 	setCursorPosition(6,4);
 	printf("Press Any Key To Continue");
-	
-
+	getch();
 }
 
 void gamePlay(User *user, Card *cards){
@@ -624,10 +630,10 @@ void gamePlay(User *user, Card *cards){
 	int userCurrentHp = user->baseHp;
 	int enemyCurrentHp = currentDungeon.enemyHP;
 	int winner = 0; // 0 untuk player win, 1 untuk enemy win
-	printMapBox(8, 60);
+	printMapBox(8, 70);
 	for(int i = 0; i < totalTurn; i++){
 		setCursorPosition(3, 4);
-		for(int m = 0; m < 56; m++) printf(" ");
+		for(int m = 0; m < 64; m++) printf(" ");
 		setCursorPosition(3, 4);
 		if(i >= userCardCount){
 			printf("%s did nothing", user->name);
@@ -651,7 +657,7 @@ void gamePlay(User *user, Card *cards){
 				// masukin logic kalah
 				userMultiplier = 1;
 				setCursorPosition(4,4);
-				for(int m = 0; m < 56; m++) printf(" ");
+				for(int m = 0; m < 64; m++) printf(" ");
 				setCursorPosition(4,4);
 				printf("Dealt \033[1;31m%d\033[0m damage to the Enemy", totalDamage);
 				
@@ -659,7 +665,7 @@ void gamePlay(User *user, Card *cards){
 			else if(cards[i].type == 2){
 				printf("%s applied Defense Card", user->name);
 				setCursorPosition(4,4);
-				for(int m = 0; m < 56; m++) printf(" ");
+				for(int m = 0; m < 64; m++) printf(" ");
 				setCursorPosition(4,4);
 				userBlockTurn++;
 				printf("User can block for the next \033[1;34m%d\033[0m turn(s)", userBlockTurn);
@@ -667,7 +673,7 @@ void gamePlay(User *user, Card *cards){
 			else if(cards[i].type == 3){
 				printf("%s applied Enhance Card", user->name);
 				setCursorPosition(4,4);
-				for(int m = 0; m < 56; m++) printf(" ");
+				for(int m = 0; m < 64; m++) printf(" ");
 				setCursorPosition(4,4);
 				userMultiplier *= 2;
 				printf("User next attack will be \033[1;33m%dx\033[0m times stronger", userMultiplier);
@@ -675,7 +681,7 @@ void gamePlay(User *user, Card *cards){
 			else if(cards[i].type == 4){
 				printf("%s applied Heal Card", user->name);
 				setCursorPosition(4,4);
-				for(int m = 0; m < 56; m++) printf(" ");
+				for(int m = 0; m < 64; m++) printf(" ");
 				setCursorPosition(4,4);
 				userCurrentHp += (user->baseHp)/2;
 				if(userCurrentHp > user->baseHp) userCurrentHp = user->baseHp;
@@ -683,10 +689,13 @@ void gamePlay(User *user, Card *cards){
 			}
 		}
 		setCursorPosition(6,4);
-		for(int m = 0; m < 56; m++) printf(" ");
+		for(int m = 0; m < 64; m++) printf(" ");
 		setCursorPosition(6,4);
 		if(i >= enemyCardCount){
 			printf("Enemy did nothing");
+			setCursorPosition(7,4);
+			for(int m = 0; m < 64; m++) printf(" ");
+			setCursorPosition(7,4);
 		}
 		else {
 			Card enemyCard = {((rand() % 100) < 50 ? 1 : (rand() % 100) < 30 ? 2 : 3)};
@@ -704,7 +713,7 @@ void gamePlay(User *user, Card *cards){
 				// masukin logic user kalah 
 				enemyMulitplier = 1;
 				setCursorPosition(7,4);
-				for(int m = 0; m < 56; m++) printf(" ");
+				for(int m = 0; m < 64; m++) printf(" ");
 				setCursorPosition(7,4);
 				printf("Dealt \033[1;31m%d\033[0m damage to user", totalDamage);
 				
@@ -712,7 +721,7 @@ void gamePlay(User *user, Card *cards){
 			else if(enemyCard.type == 2){
 				printf("Enemy applied Defense Card");
 				setCursorPosition(7,4);
-				for(int m = 0; m < 56; m++) printf(" ");
+				for(int m = 0; m < 64; m++) printf(" ");
 				setCursorPosition(7,4);
 				enemyBlockTurn++;
 				printf("Enemy can block for the next \033[1;34m%d\033[0m turn(s)", enemyBlockTurn);
@@ -720,7 +729,7 @@ void gamePlay(User *user, Card *cards){
 			else if(enemyCard.type == 3){
 				printf("Enemy applied Enhance Card");
 				setCursorPosition(7,4);
-				for(int m = 0; m < 56; m++) printf(" ");
+				for(int m = 0; m < 64; m++) printf(" ");
 				setCursorPosition(7,4);
 				enemyMulitplier *= 2;
 				printf("Enemy next attack will be \033[1;33m%dx\033[0m times stronger", enemyMulitplier);
@@ -734,8 +743,12 @@ void gamePlay(User *user, Card *cards){
 			}
 		}
 		setCursorPosition(12,4);
+		printBlankLine();
+		setCursorPosition(12,4);
 		printf("User\'s HP: %d | User\'s Multiplier: %d | User\'s block Turn: %d", 
 		userCurrentHp < 0 ? 0 : userCurrentHp, userMultiplier, userBlockTurn);
+		setCursorPosition(13, 4);
+		printBlankLine();
 		setCursorPosition(13, 4);
 		printf("Enemy\'s HP: %d | Enemy\'s Multiplier: %d | Enemy\'s block Turn: %d", 
 		enemyCurrentHp < 0 ? 0 : enemyCurrentHp, enemyMulitplier, enemyBlockTurn);
@@ -743,17 +756,20 @@ void gamePlay(User *user, Card *cards){
 		
 		if(enemyCurrentHp <= 0 && userCurrentHp > 0){
 			// win scene
+			flushBuffer();
 			winScene(user);
 			winner = 0;
 			break;
 		}
-		else if(userCurrentHp <= 0){
+		else if(userCurrentHp <= 0 || (i == totalTurn - 1 && enemyCurrentHp >= 0)){
 			// lose scene
+			flushBuffer();
 			resetScreen();
 			setCursorPosition(3, 10);
 			printf("\033[1;31mYOU LOST\033[0m");
 			setCursorPosition(4,10);
 			printf("Press Any Key to Continue");
+			getch();
 			teleportUserToBase(user);
 			winner = 1;
 			break;
@@ -761,7 +777,7 @@ void gamePlay(User *user, Card *cards){
 	}
 	// kalau turnnya habis dan enemy belum mati, user otomatis kalah
 	
-	getch();
+	flushBuffer();
 }
 
 void dungeonScene(User *user){
@@ -770,7 +786,10 @@ void dungeonScene(User *user){
 	resetScreen();
 	int userCardCount = user->cardCount;
 	Card userCard[userCardCount];
-	printMapBox(7, 70);
+	printMapBox(8, 70);
+	setCursorPosition(2,3);
+	int dungeonLevel = user->currentField->dungeon.baseLevel;
+	printf("%s Dungeon" RESET, dungeonLevel == 1 ? "\033[1;32mEasy" : dungeonLevel == 2 ? "\033[1;33mMedium" : "\033[1;31mHard");
 	for(int i = 0; i < userCardCount; i++){
 		
 		int selected = 0;
@@ -781,11 +800,11 @@ void dungeonScene(User *user){
 			
 			printCardList(userCard, i);
 			
-			setCursorPosition(5,2);
+			setCursorPosition(6,3);
 			printf("Select one of this card:");
-			setCursorPosition(6,2);
+			setCursorPosition(7,3);
 			printf("1. "); printCardType(random1); printf("%s", !selected ? " <<< " : "    "); // kalau selected == 0
-			setCursorPosition(7,2);
+			setCursorPosition(8,3);
 			printf("2. "); printCardType(random2); printf("%s", selected ? " <<< " : "     "); // kalau selected == 1
 			char c = getch();
 			if(c == 'W' || c == 'w'){
@@ -857,19 +876,23 @@ void baseMenu(User *user){
 	int selected = 0;
 	int levelUpReq = 10 * pow(5,user->baseLevel-1);
 	while(1){
-		printMapBox(10, 30);
-		setCursorPosition(2,2);
+		printMapBox(12, 40);
+		setCursorPosition(2,3);
+		printf("-Your Base-");
+		setCursorPosition(4,3);
 		printf("Current Base Level : %d", user->baseLevel);
-		setCursorPosition(3,2);
+		setCursorPosition(5,3);
 		printf("User HP : %d", user->baseHp);
-		setCursorPosition(4,2);
+		setCursorPosition(6,3);
 		printf("User Attack : %d", user->baseAttack);
-		setCursorPosition(5,2);
+		setCursorPosition(7,3);
 		printf("User Card Slot : %d", user->cardCount);
-		setCursorPosition(7,2);
+		setCursorPosition(8,3);
+		printf("Heart of Ice Owned : %d", user->iceHeartCount);
+		setCursorPosition(11,3);
 		printf("%s1. Level Up Base (%d)\033[0m", user->iceHeartCount < levelUpReq ? "\033[1;31m" : "", levelUpReq); 
 			printf("%s", !selected ? " <<< " : ""); // kalau selected == 0
-		setCursorPosition(8,2);
+		setCursorPosition(12,3);
 		printf("2. Return"); printf("%s", selected ? " <<< " : ""); 
 		
 		char c = getch();
@@ -896,20 +919,12 @@ void baseMenu(User *user){
 }
 
 void drawTable(int currentPage, int totalPages, int start, int end, int selected, Bookmark **bookmarks) {
-	
-    // Top border
-//    printf("%c", CORNER_TL);
-//    for (int i = 0; i < 50; i++) printf("%c", LINE_H);
-//    printf("%c\n", CORNER_TR);
-
     // Header
     setCursorPosition(2,3);
     printf("%-48s", "Bookmarks");
-//    printf("%c %-48s %c\n", LINE_V, "", LINE_V);
 
-    // Rows
     for (int i = start; i < end; i++) {
-    	setCursorPosition(i-start + 3, 3);
+    	setCursorPosition(i-start + 4, 3);
         if (i == start + selected) {
             printf("%s%-48s%s", HIGHLIGHT_COLOR, bookmarks[i]->notes, "\033[0m");
         } else {
@@ -917,21 +932,20 @@ void drawTable(int currentPage, int totalPages, int start, int end, int selected
         }
     }
 
-    // Fill empty rows for remaining space
     for (int i = end; i < start + 10; i++) {
-    	setCursorPosition(i + 3, 3);
+    	setCursorPosition(end-start + (i - end) + 4, 3);
         printf("%-48s", "");
     }
 
-    // Bottom border
-//    printf("%c", CORNER_BL);
-//    for (int i = 0; i < 50; i++) printf("%c", LINE_H);
-//    printf("%c\n", CORNER_BR);
-
     // Footer
-    setCursorPosition(15,1);
-    printf("Page %d of %d | Use W/S to navigate, A/D to switch pages, Enter to select, Esc to exit.\n",
-           currentPage + 1, totalPages);
+    setCursorPosition(15,20);
+    printf("Page %d of %d",  currentPage + 1, totalPages);
+    setCursorPosition(16,1);
+    printf("W/S to Navigate");
+    setCursorPosition(17,1);
+    printf("A/D to Switch Pages");
+    setCursorPosition(18,1);
+    printf("Press Enter to Select, Esc to Exit");
 }
 
 int viewBookmarks(User *user) {
@@ -1096,17 +1110,15 @@ void mainMenu(User *user){
 	puts("\033[1;36m1. Teleport to Base <<<\033[0m");
 	puts("2. Mark Location");
 	puts("3. View Marked Locations");
-	puts("4. How To Play");
-	puts("5. Return");
-	puts("6. Exit Game");
+	puts("4. Return");
+	puts("5. Exit Game");
 	
-	const char *menuItems[6] = {
+	const char *menuItems[5] = {
         "1. Teleport to Base",
         "2. Mark Location",
         "3. View Marked Locations",
-        "4. How To Play",
-        "5. Return",
-        "6. Exit Game"
+        "4. Return",
+        "5. Exit Game"
     };
 	
 	
@@ -1122,10 +1134,10 @@ void mainMenu(User *user){
 		printf("%s", menuItems[selected]);
         if (ch == 'w' || ch == 'W') {
         	
-            selected = (selected - 1 + 6) % 6;
+            selected = (selected - 1 + 5) % 5;
 
         } else if (ch == 's' || ch == 'S') {
-            selected = (selected + 1) % 6;
+            selected = (selected + 1) % 5;
             
         } else if (ch == '\r') { // Enter key
 			if (selected == 0){
@@ -1157,10 +1169,11 @@ void mainMenu(User *user){
 					setCursorPosition(1,33);
 					scanf("%[^\n]", note);getchar();
 					if (strcmp(note, "esc") != 0 && strlen(note) <= 20){
-						insertBookmark(note, user->currentField);
+						
 						break;
 					}
 				}
+				insertBookmark(note, user->currentField);
 				return;
 			}
 			
@@ -1173,44 +1186,43 @@ void mainMenu(User *user){
 					puts("\033[1;36m1. Teleport to Base <<<\033[0m");
 					puts("2. Mark Location");
 					puts("3. View Marked Locations");
-					puts("4. How To Play");
-					puts("5. Return");
-					puts("6. Exit Game");
+					puts("4. Return");
+					puts("5. Exit Game");
 					continue;
 				}
 				return;
 			}
 			
-			if (selected == 3){
-				
-				// how to play
-				// In this game you will be spawned on a base field, you can upgrade the base level
-				// Eventually you will also get stronger by leveling up base
-				// You can use the reward recieved from fighting in dungeon to level up base
-				// In the game, you can choose up to certain number of card.
-				// Attack card is to attack the enemy with 100% attack power
-				// Defense card is to block incoming attacks
-				// Enhance card is to strengthen incoming attack, which can be stacked
-				// Heal Card is to heal ourself by 50% of hp
-				
-				// After choosing your cards, you will be facing the enemy and play the card turn by turn
-				// You will always play first. Enemy also have certain number of Card
-				// Dungeon will have 3 level from 1-3. You need to beat level 1 dungeon to make it into level 2
-				// After level 3, the dungeon is considered conquered and you can't enter that dungeon anymore
-				
-				// You can also mark a field with a code or note to make it recognizeable
-				// You can teleport to the marked field by using menu 'q'
-				// You can also remove the mark after you dont need it anymore
-				
-				return;
-			}
+//			if (selected == 3){
+//				
+//				// how to play
+//				// In this game you will be spawned on a base field, you can upgrade the base level
+//				// Eventually you will also get stronger by leveling up base
+//				// You can use the reward recieved from fighting in dungeon to level up base
+//				// In the game, you can choose up to certain number of card.
+//				// Attack card is to attack the enemy with 100% attack power
+//				// Defense card is to block incoming attacks
+//				// Enhance card is to strengthen incoming attack, which can be stacked
+//				// Heal Card is to heal ourself by 50% of hp
+//				
+//				// After choosing your cards, you will be facing the enemy and play the card turn by turn
+//				// You will always play first. Enemy also have certain number of Card
+//				// Dungeon will have 3 level from 1-3. You need to beat level 1 dungeon to make it into level 2
+//				// After level 3, the dungeon is considered conquered and you can't enter that dungeon anymore
+//				
+//				// You can also mark a field with a code or note to make it recognizeable
+//				// You can teleport to the marked field by using menu 'q'
+//				// You can also remove the mark after you dont need it anymore
+//				
+//				return;
+//			}
 			
-			if (selected == 4){
+			if (selected == 3){
 				// return ke game
 				return;
 			}
 			
-			if (selected == 5){
+			if (selected == 4){
 				exit(0);
 			}
 			break;
@@ -1244,7 +1256,7 @@ void moveUser(User *user, char input) {
 			}
         	else if (user->p.y == mapDungeon.p.y + 1 &&
 			(ABSOLUTE_VALUE(getDiff(user->p.x, mapDungeon.p.x)) <= 1)){
-        		if(user->p.x == mapDungeon.p.x){
+        		if(user->p.x == mapDungeon.p.x && mapDungeon.baseLevel < 4){
         			dungeonEntrance(user);
         			
 				}
@@ -1356,6 +1368,7 @@ void moveO(User *user){
 
         input = getch();        // Get the player's input
         setCursorPosition(user->p.y + 2, user->p.x + 2);
+        // reset posisi user di UI
         printf(" ");
         moveUser(user, input);  // Update the player's position based on input
 		printUserPosition(user);
@@ -1376,13 +1389,31 @@ int main() {
     
     User *user = (User*)malloc(sizeof(User));
     user->baseLevel = 1;
-    user->iceHeartCount = 10;
+    user->iceHeartCount = 60;
     user->baseHp = 500;
     user->baseAttack = 100;
     user->cardCount = 8;
-//    printf("Insert Name : ");
-//    scanf("%s", user->name); getchar();
-    strcpy(user->name, "XY");
+    while (1) {
+        setCursorPosition(2, 1);
+        printf("Insert Name (max 10 characters): ");
+        setCursorPosition(3, 1);
+        printBlankLine();
+        setCursorPosition(3, 1);
+        
+        char tempName[100];
+        scanf("%s", tempName); getchar();
+
+        if (strlen(tempName) > 10) {
+            resetScreen();
+            setCursorPosition(1, 1);
+            printf("Name cannot exceed 10 characters.");
+            continue;
+        }
+
+        strcpy(user->name, tempName);
+        break;
+    }
+//    strcpy(user->name, "XY");
     teleportUserToBase(user);
     // moveO itu main loop nya
     moveO(user);
