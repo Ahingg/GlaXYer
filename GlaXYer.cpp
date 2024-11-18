@@ -27,6 +27,8 @@
 #define CROSS     206
 #define MAX_HEIGHT 20
 #define MAX_WIDTH 40
+#define WIDTH 80
+#define HEIGHT 25
 
 
 void flushBuffer(){
@@ -1380,42 +1382,150 @@ void moveO(User *user){
     }
 }
 
+void sleepMilliseconds(int milliseconds) {
+    Sleep(milliseconds); // Windows function for sleep
+}
+
+void printSnowField(char snowField[HEIGHT][WIDTH]) {
+    for (int i = 0; i < HEIGHT; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+			if(snowField[i][j] == '*'){
+				setCursorPosition(i + 1, j + 1);
+            	printf("%c", snowField[i][j]);
+			}
+        }
+        
+    }
+}
+
+void generateSnowFrame(char snowField[HEIGHT][WIDTH]) {
+    for (int i = 0; i < HEIGHT; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+            // Add random snowflakes
+            if(snowField[i][j] != ' ' && snowField[i][j] != '*') continue;
+            if (rand() % 100 < 5) { // 5% chance of a snowflake
+                snowField[i][j] = '*';
+            } else if (snowField[i][j] == '*') {
+                snowField[i][j] = ' '; // Clear old snowflake
+            }
+        }
+    }
+    printSnowField(snowField); 
+//    Sleep(100);
+//    for(int i = 0; i < 3; i++) ?
+	usleep(100000);
+    for (int i = 0; i < HEIGHT; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+            // Add random snowflakes
+			if (snowField[i][j] == '*') {
+                setCursorPosition(i+1, j+1);
+				printf(" "); // Clear old snowflake
+            }
+        }
+    }
+}
+
+char asciiArt[HEIGHT][WIDTH] = {
+    "                                                                      ",
+    " @@@@@@@@  @@@        @@@@@@   @@@  @@@  @@@ @@@  @@@@@@@@  @@@@@@@   ",
+    "@@@@@@@@@  @@@       @@@@@@@@  @@@  @@@  @@@ @@@  @@@@@@@@  @@@@@@@@  ",
+    "!@@        @@!       @@!  @@@  @@!  !@@  @@! !@@  @@!       @@!  @@@  ",
+    "!@!        !@!       !@!  @!@  !@!  @!!  !@! @!!  !@!       !@!  @!@  ",
+    "!@! @!@!@  @!!       @!@!@!@!   !@@!@!    !@!@!   @!!!:!    @!@!!@!   ",
+    "!!! !!@!!  !!!       !!!@!!!!    @!!!      @!!!   !!!!!:    !!@!@!    ",
+    ":!!   !!:  !!:       !!:  !!!   !: :!!     !!:    !!:       !!: :!!   ",
+    ":!:   !::   :!:      :!:  !:!  :!:  !:!    :!:    :!:       :!:  !:!  ",
+    " ::: ::::   :: ::::  ::   :::   ::  :::     ::     :: ::::  ::   :::  ",
+    " :: :: :   : :: : :   :   : :   :   ::      :     : :: ::    :   : :  ",
+    "                                                                      "
+};
+
+void drawGlaxyer(char snowField[HEIGHT][WIDTH]) {
+
+	
+	
+
+    int artHeight = 12;
+    int artWidth = 70;
+    int startRow = 8;
+    int startCol = 5;
+    
+    for(int i = 0; i < artHeight; i++){
+    	
+    	for(int j = 0; j < artWidth; j++){
+    		snowField[startRow - 1 + i][startCol - 1 + j] = asciiArt[i][j];
+		}
+	}
+//	printSnowField(snowField);
+    
+	printf("\e[0;96m");
+    for (int i = 0; i < artHeight; i++) {
+        setCursorPosition(startRow + i, startCol);
+        printf("%s", asciiArt[i]);
+    }
+    printf(RESET);
+}
+
+
 int main() {
 	srand(time(NULL));
     HWND consoleWindow = GetConsoleWindow();
     ShowWindow(consoleWindow, SW_MAXIMIZE);
     
-    initializeMap();
     
+    char snowField[HEIGHT][WIDTH];
+
+    // Initialize the snow field
+    for (int i = 0; i < HEIGHT; i++) {
+        for (int j = 0; j < WIDTH; j++) {
+            snowField[i][j] = ' ';
+        }
+    }
+    drawGlaxyer(snowField);
+    
+    while (1) {
+        generateSnowFrame(snowField);
+        if (_kbhit()) {
+        	resetScreen();
+            break;
+        }
+    }
+    initializeMap();
     User *user = (User*)malloc(sizeof(User));
     user->baseLevel = 1;
     user->iceHeartCount = 60;
     user->baseHp = 500;
     user->baseAttack = 100;
     user->cardCount = 8;
+
     while (1) {
-        setCursorPosition(2, 1);
+    	flushBuffer();
+	    printf("\e[0;96m");
+	    for (int i = 0; i < 12; i++) {
+	        setCursorPosition(1 + i, 1);
+	        printf("%s", asciiArt[i]);
+	    }
+	    printf(RESET);
+        setCursorPosition(14, 1);
         printf("Insert Name (max 10 characters): ");
-        setCursorPosition(3, 1);
+        setCursorPosition(15, 1);
         printBlankLine();
-        setCursorPosition(3, 1);
+        setCursorPosition(15, 1);
         
         char tempName[100];
         scanf("%s", tempName); getchar();
 
         if (strlen(tempName) > 10) {
             resetScreen();
-            setCursorPosition(1, 1);
+            setCursorPosition(13, 1);
             printf("Name cannot exceed 10 characters.");
             continue;
         }
-
         strcpy(user->name, tempName);
         break;
     }
 //    strcpy(user->name, "XY");
     teleportUserToBase(user);
-    // moveO itu main loop nya
     moveO(user);
     
     return 0;
