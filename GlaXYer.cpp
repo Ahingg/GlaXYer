@@ -29,6 +29,10 @@
 #define MAX_WIDTH 40
 #define WIDTH 80
 #define HEIGHT 25
+#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
+#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
+#endif
+
 
 
 void flushBuffer(){
@@ -172,7 +176,6 @@ int deleteBookmark(const char *notes) {
 
     return 0; 
 }
-
 
 
 int getDiff(int pos1, int pos2){
@@ -1471,7 +1474,10 @@ int main() {
 	srand(time(NULL));
     HWND consoleWindow = GetConsoleWindow();
     ShowWindow(consoleWindow, SW_MAXIMIZE);
-    
+	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD dwMode = 0;
+    GetConsoleMode(hOut, &dwMode);
+    SetConsoleMode(hOut, dwMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
     
     char snowField[HEIGHT][WIDTH];
 
